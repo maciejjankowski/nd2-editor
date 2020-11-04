@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width">
+  <title>JS Bin</title>
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+
+  
+<div id="app">\xx
+  <input type="range" min=0 max=4 v-model="midiOutputSelected"> {{midiOutputSelected}}
+  
+  <ol>
+    <li  v-for="port in midiOutputPorts">
+      {{ port.name}}
+    </li>
+  </ol>
+    <ol>
+    <li v-for="control in controls">
+      {{ control.name }}<br>
+      <input type="range" v-on:input="updateControl" min="0" max="127" :data-cc=control.CC v-model=control.value> {{control.value}}
+    </li>
+  </ol>
+</div>
+
+  <script>
+  let data = `32 Bank Select LSB
+0 Bank Select MSB
+7 Level
+10 Pan
+14 Noise Filter Frequency
+15 Noise Filter Type
+16 Noise Filter Envelope
+17 Noise Filter Resonance
+18 Noise Attack/Rate
+19 Noise Atk Mode
+20 Noise Decay Type (E, L, G)
+21 Noise Decay
+22 Noise Decay Lo
+23 Dist Amount
+24 Dist Type
+25 EQ Frequency
+26 EQ Gain
+27 Echo Feedback
+28 Echo Amount
+61 Echo BPM LSB
+29 Echo BPM MSB
+30 Tone Spectra
+46 Tone Wave
+47 Tone Timbre Decay
+48 Tone Punch
+49 Tone Decay Type (L, E)
+50 Tone Decay
+51 Tone Dec Lo
+52 Tone Timbre
+53 Tone Timb Envelope
+54 Tone Bend Amount
+55 Tone Bend Time
+56 Click Level
+57 Click Type
+58 Mix Balance
+59 Mute Group
+63 Tone Pitch LSB
+31 Tone Pitch MSB
+70 Channel Focus`
+
+let xcontrols = data
+  .split("\n")
+  .map(l => l.split(" "))
+  .map(pair => ({ "name" : pair.slice(1).join(" "), "CC" : pair[0], "value":0}))
+
+const v1Channel = 34;
+const v2Channel = 34;
+const v3Channel = 34;
+const v4Channel = 34;
+const v5Channel = 34;
+const v6Channel = 34;
+
+function sendMidi(){
+  return 1
+}
+
+// https://vuejsexamples.com/a-rotary-knob-control-for-vue-js/
+// https://github.com/andrepxx/pure-knob
+
+var app = new Vue({
+  el: '#app',
+  data: {
+    message: 'Hello Vue!',
+    controls : xcontrols,
+    midiInputPorts : [],
+    midiOutputPorts : [],
+    midiOutputSelected : localStorage["midiOutNo"] || 0,
+    channel : 0
+  },
+  methods:{
+    updateControl : function(a){
+      console.log(a);
+      app.midiOutputPorts[app.midiOutputSelected].send([0xb0 | app.channel,
+        a.target.dataset["cc"], a.target.value])
+    },
+    onMIDIMessage : function onMIDIMessage( event ) {
+		  var str = "";
+      console.log(event.data);
+		  for (var i=0; i<event.data.length; i++) {
+			  str += "0x" + event.data[i].toString(16) + " ";
+		  }
+		  console.log( event.timeStamp, str );
+		} // onMIDIMessage
+  }
+})
+
+
+// document.getElementById("out").innerHTML = JSON.stringify(xcontrols,null, 2)
+
+var midiOut = {send : ()=>{}}
+
+function _initMidi(){
+  let beat = 0;
+
+	if (typeof navigator.requestMIDIAccess !== 'undefined') {
+
+	navigator.requestMIDIAccess().then(function(midiAccess){
+		(function startLoggingMIDIInput( midiAccess, indexOfPort ) {
+      app.midiInputPorts = [];
+      app.midiOutputPorts = [];
+		  midiAccess.inputs.forEach( function(entry) {
+        // if (entry.name !== "CH345" ){
+        console.log('entry', entry)
+        app.midiInputPorts.push(entry);
+        entry.onmidimessage = app.onMIDIMessage;
+        // }
+      });
+      
+      midiAccess.outputs.forEach((entry)=>{
+        console.log(entry.name);
+        
+        app.midiOutputPorts.push(entry);
+
+      })
+		})(midiAccess);
+    
+
+    
+	}); // then
+    
+  } else {
+    app.error = "no midi"
+  }
+  
+}
+
+
+if (1 || location.search === '?host' || localStorage['host'] == 1) {
+  _initMidi();
+}
+
+
+
+  </script>
+  
+</body>
+</html>
